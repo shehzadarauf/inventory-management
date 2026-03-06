@@ -124,12 +124,18 @@ Route::group(['namespace'=>'App\Http\Controllers\Api'], function () {
     });
     Route::group(['namespace'=>'User', 'prefix' => 'user'], function () {
         Route::any('login', function (Request $request) {
-            Log::info('[ROUTE] Login request', [
-                'email'      => $request->email,
-                'ip'         => $request->ip(),
-                'method'     => $request->method(),
-                'user_agent' => $request->userAgent(),
-                'timestamp'  => now()->toDateTimeString(),
+            Log::info('[ROUTE] Login request diagnostic', [
+                'email_magic'        => $request->email,
+                'email_input'        => $request->input('email'),
+                'all_parsed'         => $request->all(),
+                'raw_body'           => $request->getContent(),
+                'content_type'       => $request->header('Content-Type'),
+                'accept'             => $request->header('Accept'),
+                'ip'                 => $request->ip(),
+                'method'             => $request->method(),
+                'user_agent'         => $request->userAgent(),
+                'is_json'            => $request->isJson(),
+                'timestamp'          => now()->toDateTimeString(),
             ]);
             return app()->call('App\Http\Controllers\Api\User\AuthController@login', ['request' => $request]);
         });
