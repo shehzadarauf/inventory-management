@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -122,7 +123,16 @@ Route::group(['namespace'=>'App\Http\Controllers\Api'], function () {
       
     });
     Route::group(['namespace'=>'User', 'prefix' => 'user'], function () {
-        Route::any('login','AuthController@login');
+        Route::any('login', function (Request $request) {
+            Log::info('[ROUTE] Login request', [
+                'email'      => $request->email,
+                'ip'         => $request->ip(),
+                'method'     => $request->method(),
+                'user_agent' => $request->userAgent(),
+                'timestamp'  => now()->toDateTimeString(),
+            ]);
+            return app()->call('App\Http\Controllers\Api\User\AuthController@login', ['request' => $request]);
+        });
         Route::any('register','UserController@register');
         Route::group(['middleware' => 'auth:user',], function () {
 
