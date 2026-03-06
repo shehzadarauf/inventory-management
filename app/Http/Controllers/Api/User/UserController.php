@@ -12,7 +12,6 @@ class UserController extends Controller
 {
     public function register(Request $request){
         $credentials = ApiValidate::register($request, User::class);
-        $credentials['type'] = $credentials['type'] ?? 'User';
         $user = User::create($credentials);
         return Api::setResponse('user', $user->withToken());
     }
