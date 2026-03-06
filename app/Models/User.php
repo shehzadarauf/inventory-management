@@ -61,7 +61,7 @@ class User extends Authenticatable
     public static function loginRules()
     {
         return [
-            'email'=>'email|required',
+            'email'=>'email',
             'password' => 'required',
             
         ];
