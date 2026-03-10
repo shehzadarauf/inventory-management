@@ -5,11 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class SaleItem extends Model
+class DeletedSaleItem extends Model
 {
     use HasFactory;
     protected $fillable=[
-        'sale_id',
+        'deleted_sale_id',
         'product_id',
         'size_id',
         'length_id',
@@ -18,9 +18,11 @@ class SaleItem extends Model
         'qty',
         'weight',
         'price',
-        'created_by'
+        'created_by',
+        'deleted_by'
     ];
-    public function productData(){
+    
+     public function productData(){
         return $this->belongsTo(Product::class,'product_id');
     }
 

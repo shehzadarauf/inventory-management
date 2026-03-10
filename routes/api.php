@@ -93,8 +93,18 @@ Route::group(['namespace'=>'App\Http\Controllers\Api'], function () {
             Route::any('delete/sale','SaleController@deleteSale');
             Route::any('all/sales','SaleController@allSales');
             Route::any('sales/byDate','SaleController@saleByDate');
+            
+            Route::any('change/visibility/status','SaleController@changeStatus');
 
             Route::any('thirty/days/sales','SaleController@lastThirtyDaysSales');
+             Route::any('unweighted/sales/count','SaleController@unweightedLastThirtyDaysSalesCount');
+            
+            Route::any('add/transport/type','SaleController@addTransportType');
+            Route::any('view/transport/types','SaleController@viewAllTransportTypes');
+            
+            ///////////////// Deleted Sales Routes //////////////
+            Route::any('all/deleted/sales','SaleController@deletedSales');
+            Route::any('view/deleted/sale/detail','SaleController@viewDeletedSaleDetail');
 
             /////////////////  Sale Return Routes ////////////////
             Route::any('all/sale/returns','SaleReturnController@allSalesReturns');
@@ -118,6 +128,7 @@ Route::group(['namespace'=>'App\Http\Controllers\Api'], function () {
             Route::any('add/weighment','WeighmentController@store');
             Route::any('view/weighment','WeighmentController@viewWeighment');
             Route::any('update/weighment','WeighmentController@updateWeighment');
+            Route::any('view/deleted/weighment','WeighmentController@viewDeletedWeighment');
         });
       
     });

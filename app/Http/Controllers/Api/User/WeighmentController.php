@@ -8,8 +8,12 @@ use App\Models\Category;
 use App\Models\ProductSize;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\TransportType;
 use App\Models\SaleItemWeighment;
 use App\Models\WeighmentUnit;
+use App\Models\DeletedSale;
+use App\Models\DeletedSaleItem;
+use App\Models\DeletedSaleItemWeighment;
 use Illuminate\Http\Request;
 use PhpParser\Node\Stmt\Return_;
 
@@ -17,7 +21,15 @@ class WeighmentController extends Controller
 {
     public function store(Request $request){
         $sale=Sale::find($request->sale_id);
-        
+        $vehicle_sle=TransportType::where('name',$request->vehicle_no)->first();
+         
+        if(!isset($vehicle_sle->id)){
+           
+            TransportType::create([
+                'name'=>$request->vehicle_no
+                ]);
+        }
+      
         if($sale!=null){
             $sale->update([
                 'weighted'=>true
@@ -117,6 +129,41 @@ class WeighmentController extends Controller
         }
         
         return Api::setMessage('Weighment updated successfully');
+    }
+    
+    public function viewDeletedWeighment(Request $request){
+        $sale=DeletedSale::find($request->sale_id);
+        $productData=[];
+            $saleItems=$sale->saleItems->unique('product_id');
+
+            foreach ($saleItems as $key => $saleitem) {
+                $product=$saleitem->productData;
+               
+                // $product->sizes;
+                $product->lengths;
+                $category=Category::find($product->category_id);
+                $product->category_name=$category->name;
+                $sizes=[];
+               $sunit=WeighmentUnit::find($saleitem->sunit_id);
+               $punit=WeighmentUnit::find($saleitem->punit_id);
+              
+                $product->sale_items=DeletedSaleItem::where('product_id',$product->id)->where('deleted_sale_id',$sale->id)->get();
+                foreach ($product->sale_items as $key => $saleItem) { 
+                    $size=ProductSize::find($saleItem->size_id);
+                    $saleItem->pweighments=DeletedSaleItemWeighment::where('primary_id','!=',null)->where('deleted_sale_item_id',$saleItem->id)->get(['id','deleted_sale_item_id','primary_id','primary_qty','primaryCheck']);
+                    $saleItem->sweighments=DeletedSaleItemWeighment::where('secondary_id','!=',null)->where('deleted_sale_item_id',$saleItem->id)->get(['id','deleted_sale_item_id','secondary_id','secondary_qty','secondaryCheck']);
+                    $sizes[]=$size;
+
+                }
+                $product->sizes=$sizes;
+               
+                $product->punit=$punit;
+                $product->sunit=$sunit;
+                // $product->pweighment=$pweighment;`
+                // $product->sweighment=$sweighment;
+                $productData[]=$product;
+            }
+        return Api::setResponse('productData',$productData);
     }
 
 

@@ -38,6 +38,7 @@ class CheckStock implements ShouldQueue
      */
     public function handle()
     {
+        
         // Log::info('Data sjdflkdsfkldsjfkd');
         // $user=User::find(1);
        

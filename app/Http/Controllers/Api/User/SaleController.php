@@ -10,11 +10,17 @@ use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Inventory;
 use App\Models\ProductSize;
+use App\Models\DeletedSale;
+use App\Models\DeletedSaleItem;
+use App\Models\DeletedSaleItemWeighment;
+use App\Models\SaleItemWeighment;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\WeighmentUnit;
+use App\Models\TransportType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+
 
 class SaleController extends Controller
 {
@@ -67,7 +73,8 @@ class SaleController extends Controller
             $customer_id=$customer->id;
         }
        $sale= Sale::create([
-        'customer_id'=>$customer_id
+        'customer_id'=>$customer_id,
+        'created_by'=>Auth::user()->id
        ]+$request->all());
        $sale->sale_no='SO'.$sale->id;
        if($request->has('date'))
@@ -96,6 +103,7 @@ class SaleController extends Controller
                     'sunit_id'=>($someArray[$i]['sunit_id']!=0?$someArray[$i]['sunit_id']:null),
                    'qty'=>$someArray[$i]['qty'],
                    'price'=>$someArray[$i]['price'],
+                   'created_by'=>Auth::user()->id
                ]);
            }else{
             $saleItem= SaleItem::create([
@@ -107,6 +115,7 @@ class SaleController extends Controller
                 'sunit_id'=>($someArray[$i]['sunit_id']!=0?$someArray[$i]['sunit_id']:null),
                 'qty'=>$someArray[$i]['qty'],
                 'price'=>$someArray[$i]['price'],
+                'created_by'=>Auth::user()->id
             ]);
                 $preinventory->qty-=$someArray[$i]['qty'];
                 $preinventory->update();  
@@ -212,6 +221,7 @@ class SaleController extends Controller
                         'sunit_id'=>($someArray[$i]['sunit_id']!=0?$someArray[$i]['sunit_id']:null),
                         'qty'=>$someArray[$i]['qty'],
                         'price'=>$someArray[$i]['price'],
+                        'created_by'=>Auth::user()->id
                     ]);
            
                     $preinventory->qty-=$someArray[$i]['qty'];
@@ -258,6 +268,7 @@ class SaleController extends Controller
                         'sunit_id'=>($someArray[$i]['sunit_id']!=0?$someArray[$i]['sunit_id']:null),
                         'qty'=>$someArray[$i]['qty'],
                         'price'=>$someArray[$i]['price'],
+                        'created_by'=>Auth::user()->id
                     ]);
                 }
             }
@@ -267,13 +278,56 @@ class SaleController extends Controller
     }
 
     public function deleteSale(Request $request){
+        
         $sale=Sale::find($request->sale_id);
         $sale_items=$sale->saleItems;
+         $deleted_sale=DeletedSale::create([
+            'sale_no'=>$sale->sale_no,
+            'customer_id'=>$sale->customer_id,
+            'transport'=>$sale->transport,
+            'status'=>$sale->status,
+            'details'=>$sale->details,
+            'vehicle_no'=>$sale->vehicle_no,
+            'picture'=>$sale->picture,
+            'weighted'=>$sale->weighted,
+            'created_by'=>$sale->created_by,
+            'deleted_by'=>Auth::user()->id
+        ]);
         foreach ($sale_items as $key => $sale_item) {
             $preinventory=Inventory::where('product_id',$sale_item->product_id)->where('size_id',$sale_item->size_id)->where('length_id',$sale_item->length_id)->first();
             if($preinventory!=null){
                 $preinventory->qty+=$sale_item->qty;
                 $preinventory->update();
+            }
+            
+            $sale_item_weighments=SaleItemWeighment::where('sale_item_id',$sale_item->id)->get();
+
+            
+            $deletedSaleItem=DeletedSaleItem::create([
+                'deleted_sale_id'=>$deleted_sale->id,
+                'product_id'=>$sale_item->product_id,
+                'size_id'=>$sale_item->size_id,
+                'length_id'=>$sale_item->length_id,
+                'punit_id'=>$sale_item->punit_id,
+                'sunit_id'=>$sale_item->sunit_id,
+                'qty'=>$sale_item->qty,
+                'price'=>$sale_item->price,
+                'created_by'=>$sale_item->created_by,
+                'deleted_by'=>Auth::user()->id
+            ]);
+            if(isset($sale_item_weighments) && $sale_item_weighments!=null && count($sale_item_weighments)>0){
+               foreach ($sale_item_weighments as $key => $sale_item_weighment) {
+                DeletedSaleItemWeighment::create([
+                    'deleted_sale_item_id'=>$deletedSaleItem->id,
+                    'primary_id'=>$sale_item_weighment->primary_id,
+                    'primary_qty'=>$sale_item_weighment->primary_qty,
+                    'primaryCheck'=>$sale_item_weighment->primaryCheck,
+                    'secondary_id'=>$sale_item_weighment->secondary_id,
+                    'secondary_qty'=>$sale_item_weighment->secondary_qty,
+                    'secondaryCheck'=>$sale_item_weighment->secondaryCheck,
+                ]);
+               }
+               
             }
         }
         $sale->delete();
@@ -284,7 +338,7 @@ class SaleController extends Controller
 
     public function lastThirtyDaysSales(Request $request){
        
-        $date = \Carbon\Carbon::today()->subDays(30)->endOfDay();
+        $date = \Carbon\Carbon::today()->subDays(90)->endOfDay();
         $sales=[];
       
         while ($date <=now()) {
@@ -296,5 +350,85 @@ class SaleController extends Controller
             $date= date('Y-m-d', strtotime('+1 day', strtotime($date)));
         }
         return Api::setResponse('sales',$sales);
+    }
+    
+     public function unweightedLastThirtyDaysSalesCount(Request $request){
+       
+        $date = \Carbon\Carbon::today()->subDays(90)->endOfDay();
+        $sales=[];
+      
+        while ($date <=now()) {
+            $sals=Sale::whereDate('created_at', $date)->where('weighted',0)->get()->count();
+            $obj=new Api();
+            $obj->sale_date=$date;
+            $obj->sale_sum=$sals;
+            $sales[]=$obj;
+            $date= date('Y-m-d', strtotime('+1 day', strtotime($date)));
+        }
+        return Api::setResponse('sales',$sales);
+    }
+    
+    
+    public function changeStatus(Request $request){
+       
+        foreach ($request->sales as $key => $sale) {
+          $saleData=Sale::find($sale);
+          $saleData->visibility=true;
+          $saleData->update();
+        }
+          return Api::setMessage('Orders checklisted successfully');
+    }
+    
+     public function deletedSales(Request $request){
+        
+            $sales=DeletedSale::all();
+            foreach ($sales as $key => $sale) {
+                $sale->customerData;
+                $sale->deleted_by_name=$sale->deletedByUserData->name??'';
+            }
+            return Api::setResponse('sales',$sales);
+        
+      
+      
+    }
+
+    public function viewDeletedSaleDetail(Request $request){
+        $sale=DeletedSale::find($request->sale_id);
+        $productData=[];
+            $saleItems=$sale->saleItems->unique('product_id');
+            foreach ($saleItems as $key => $saleitem) {
+                $product=$saleitem->productData;
+               
+                // $product->sizes;
+                $product->lengths;
+                $product->category_name=Category::find($product->category_id)->name;
+                $sizes=[];
+               $sunit=WeighmentUnit::find($saleitem->sunit_id);
+               $punit=WeighmentUnit::find($saleitem->punit_id);
+                $product->sale_items=DeletedSaleItem::where('product_id',$product->id)->where('deleted_sale_id',$sale->id)->get();
+                foreach ($product->sale_items as $key => $saleItem) {
+                    $size=ProductSize::find($saleItem->size_id);
+                   
+                    $sizes[]=$size;
+
+                }
+                $product->sizes=$sizes;
+               
+                $product->punit=$punit;
+                $product->sunit=$sunit;
+                $productData[]=$product;
+            }
+        return Api::setResponse('productData',$productData);
+    }
+    
+    public function addTransportType(Request $request){
+        TransportType::create($request->all());
+        return Api::setMessage('Transport added successfully');
+
+    }
+    public function viewAllTransportTypes(Request $request){
+        $transportTypes=TransportType::all();
+        return Api::setResponse('transportTypes',$transportTypes);
+
     }
 }

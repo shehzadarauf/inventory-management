@@ -19,7 +19,9 @@ class NotificationController extends Controller
             $notificationProducts=NotificationProduct::where('notification_id',$notification->id)->get();
             $products=[];
             foreach ($notificationProducts as $key => $product) {
-                $products[]=$product->product;
+                $productData=$product->product;
+                if(isset($productData) && $productData!=null)
+                 $products[]=$productData;
               
             }
             foreach ($products as $key => $product) {
