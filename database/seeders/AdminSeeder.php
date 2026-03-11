@@ -20,7 +20,9 @@ class AdminSeeder extends Seeder
             'password'=>'1234',
             'api_token' => Str::random(60)
         ]);
-        Admin::create([
+        Admin::updateOrCreate([
+            'email'=>'admin2@mail.com'
+        ], [
             'name'=>'Admin2',
             'email'=>'admin2@mail.com',
             'password'=>'1234',
